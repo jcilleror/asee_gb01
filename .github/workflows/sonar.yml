@@ -1,0 +1,29 @@
+name: SonarCloud
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  sonar:
+    name: Análisis SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Compilar clases Java para SonarCloud
+        run: mvn -B -f frontend/pom.xml test-compile
+
+      - name: Análisis SonarCloud
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
