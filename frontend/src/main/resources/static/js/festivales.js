@@ -49,24 +49,61 @@ async function loadFestivals(query = "") {
             return;
         }
 
-        grid.innerHTML = filtered.map(festival => `
-            <article class="festival-card" id="festival-${festival.id}">
-                <div class="festival-card__image">
-                    <img src="${escapeHtml(festival.imagenUrl || "/images/riverland.png")}" alt="${escapeHtml(festival.nombre)}">
-                    <span>Publicado</span>
-                </div>
-                <div class="festival-card__body">
-                    <p>${formatDate(festival.fechaInicio)} · ${escapeHtml(festival.ubicacion?.ciudad || "Ubicación por confirmar")}</p>
-                    <h3>${escapeHtml(festival.nombre)}</h3>
-                    <p class="festival-card__description">${escapeHtml(festival.descripcion || "")}</p>
-                    <button class="btn btn--ghost btn--full" type="button" data-festival="${festival.id}">Ver festival</button>
-                </div>
-            </article>
-        `).join("");
+        const cards = filtered.map(festival => {
+            const article = document.createElement("article");
+            article.className = "festival-card";
+            article.id = `festival-${festival.id ?? ""}`;
 
-        document.querySelectorAll("[data-festival]").forEach(button => {
+            const imageWrapper = document.createElement("div");
+            imageWrapper.className = "festival-card__image";
+
+            const img = document.createElement("img");
+            let safeImgSrc = "/images/riverland.png";
+            if (festival.imagenUrl) {
+                try {
+                    const parsedUrl = new URL(festival.imagenUrl, window.location.origin);
+                    if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") {
+                        safeImgSrc = parsedUrl.href;
+                    }
+                } catch {
+                    safeImgSrc = "/images/riverland.png";
+                }
+            }
+            img.src = safeImgSrc;
+            img.alt = festival.nombre || "";
+
+            const badge = document.createElement("span");
+            badge.textContent = "Publicado";
+
+            imageWrapper.append(img, badge);
+
+            const body = document.createElement("div");
+            body.className = "festival-card__body";
+
+            const meta = document.createElement("p");
+            const ciudad = festival.ubicacion?.ciudad || "Ubicación por confirmar";
+            meta.textContent = `${formatDate(festival.fechaInicio)} · ${ciudad}`;
+
+            const title = document.createElement("h3");
+            title.textContent = festival.nombre || "";
+
+            const description = document.createElement("p");
+            description.className = "festival-card__description";
+            description.textContent = festival.descripcion || "";
+
+            const button = document.createElement("button");
+            button.className = "btn btn--ghost btn--full";
+            button.type = "button";
+            button.dataset.festival = festival.id ?? "";
+            button.textContent = "Ver festival";
             button.addEventListener("click", () => openFestival(button.dataset.festival));
+
+            body.append(meta, title, description, button);
+            article.append(imageWrapper, body);
+            return article;
         });
+
+        grid.replaceChildren(...cards);
 
         const selectedId = new URLSearchParams(location.search).get("id");
         if (selectedId) openFestival(selectedId);
