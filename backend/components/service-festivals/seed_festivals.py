@@ -1,4 +1,6 @@
 import json
+import re
+import urllib.parse
 import urllib.request
 
 BASE_URL = "http://localhost:8000"
@@ -113,7 +115,10 @@ existing = request("GET", "/eventos?limit=100")
 if existing["paginacion"]["total"] == 0:
     for index, festival in enumerate(FESTIVALS):
         created = request("POST", "/eventos", festival)
-        event_id = created["id"]
+        raw_event_id = str(created["id"])
+        if not re.fullmatch(r"[0-9]+", raw_event_id):
+            raise ValueError(f"ID de evento no válido: {raw_event_id}")
+        event_id = urllib.parse.quote(raw_event_id, safe="")
         for pase in PASSES:
             request("POST", f"/eventos/{event_id}/pases", pase)
         for artist_index, (artist_id, artist_name, image_url) in enumerate(ARTISTS):
@@ -137,16 +142,23 @@ else:
     print("Ya existen festivales en la base de datos.")
 
 for festival in request("GET", "/eventos?limit=100")["data"]:
-    event_id = festival["id"]
+    raw_event_id = str(festival["id"])
+    if not re.fullmatch(r"[0-9]+", raw_event_id):
+        raise ValueError(f"ID de evento no válido: {raw_event_id}")
+    event_id = urllib.parse.quote(raw_event_id, safe="")
     aforo = festival["aforo"] or 18000
     pases = request("GET", f"/eventos/{event_id}/pases")["data"]
 
     for pase in pases:
+        raw_pass_id = str(pase["id"])
+        if not re.fullmatch(r"[0-9]+", raw_pass_id):
+            raise ValueError(f"ID de pase no válido: {raw_pass_id}")
+        pass_id = urllib.parse.quote(raw_pass_id, safe="")
         tipo = (pase.get("tipo") or "").lower()
         stock = aforo if tipo != "vip" else round(aforo * 0.08)
         request(
             "PUT",
-            f"/eventos/{event_id}/pases/{pase['id']}",
+            f"/eventos/{event_id}/pases/{pass_id}",
             {
                 "nombre": pase["nombre"],
                 "descripcion": pase.get("descripcion"),
